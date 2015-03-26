@@ -67,7 +67,7 @@ class GameViewController: UIViewController, SocketControllerGamingDelegate {
     func runTimer() {
         if accumulatedPos != 0 {
             let theMove = ["paddle": ["x": self.accumulatedPos, "y": 0]]
-            self.socket?.socket?.emit("move", args: [theMove])
+            self.socket?.sendStep(theMove)
             self.accumulatedPos = 0
         }
     }

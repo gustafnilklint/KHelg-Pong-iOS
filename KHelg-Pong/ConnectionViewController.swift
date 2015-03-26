@@ -24,7 +24,7 @@ class ConnectionViewController: UIViewController, SocketControllerDelegate, UITe
  
 //    let url = NSURL(string: "ws://jaywaypongserver.herokuapp.com:80")!
 //    let url = NSURL(string: "ws://10.0.112.186:3000")!
-    let url = NSURL(string: "ws://localhost:3000")!
+    let url = NSURL(string: "localhost:3000")!
     var socketController: SocketController!
     
     // MARK: - view life cycle
@@ -39,7 +39,7 @@ class ConnectionViewController: UIViewController, SocketControllerDelegate, UITe
     
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
         if segue.identifier == "play pong" {
-            let gameViewController = segue.destinationViewController as GameViewController
+            let gameViewController = segue.destinationViewController as! GameViewController
             self.socketController.beginPlaying()
             gameViewController.socket = self.socketController
         }
@@ -71,6 +71,7 @@ class ConnectionViewController: UIViewController, SocketControllerDelegate, UITe
     func disconnected(socketController: SocketController) {
         self.playButton.enabled = false
         self.disconnectButton.enabled = false
+        self.connectButton.enabled = true
     }
     
     func receivedMessage(socketController: SocketController, message: String) {

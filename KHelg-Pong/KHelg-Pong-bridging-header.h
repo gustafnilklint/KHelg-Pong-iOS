@@ -6,4 +6,3 @@
 //  Copyright (c) 2015 Jayway. All rights reserved.
 //
 
-#import <SIOSocket/SIOSocket.h>

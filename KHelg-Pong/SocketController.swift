@@ -23,91 +23,104 @@ class SocketController {
     
     weak var delegate: SocketControllerDelegate?
     weak var gameDelegate: SocketControllerGamingDelegate?
-    var socket: SIOSocket?
+    var socket : SocketIOClient?
     
     init(delegate: SocketControllerDelegate) {
         self.delegate = delegate
     }
     
-    // Finish implementation
+    
     func connectTo(url: NSURL, player: String) {
         let urlString = url.absoluteString!
         println("Connecting to: \(urlString)")
         
-        SIOSocket.socketWithHost(urlString) { (theSocket) -> Void in
-            self.socket = theSocket
-            self.socket?.onConnect = {
-                self.socket?.emit("add player", args: [["playername" : player]])
-                dispatch_async(dispatch_get_main_queue()){
-                    self.delegate?.connected(self)
-                    return
-                }
+        self.socket = SocketIOClient(socketURL: urlString)
+        self.addHandlers()
+        self.socket?.connect()
+        
+        delay(0.5) {
+            self.socket?.emit("add player", ["playername" : player])
+            dispatch_async(dispatch_get_main_queue()){
+                self.delegate?.connected(self)
+                return
             }
-            
-            self.socket?.on("players", callback: { (result) -> Void in
-                // let root = result.first as [String : AnyObject]
-                // println("players updated")
-            })
-            
-            self.socket?.on("message", callback: { (message) -> Void in
-                
-                let root = message.first as [String : AnyObject]
+        }
+        
+    }
+
+    func delay(delay:Double, closure:()->()) {
+        dispatch_after(
+            dispatch_time(
+                DISPATCH_TIME_NOW,
+                Int64(delay * Double(NSEC_PER_SEC))
+            ),
+            dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
+            closure)
+    }
+    
+    func addHandlers() {
+        
+        self.socket?.on("message") {[weak self] data, ack in
+            if let root = data?.firstObject as? [String : AnyObject] {
                 if let message = root["message"] as? String {
-                    let player = root["player"] as String
+                    let player = root["player"] as? String
                     dispatch_async(dispatch_get_main_queue()){
-                        let visualString = "\(player): \(message)"
-                        self.delegate?.receivedMessage(self, message: visualString)
+                        let visualString = "\(player!): \(message)"
+                        self?.delegate?.receivedMessage(self!, message: visualString)
                         return
                     }
                 }
-                
-            })
-            
-            self.socket?.on("step", callback: { (message) -> Void in
-                if let root = message.first as? [String: AnyObject]{
-                    var step = Step(json: root)
-                    dispatch_async(dispatch_get_main_queue()){
-                        self.gameDelegate?.didStep(self, step: step)
-                        return
-                    }
-                }
-            })
-            
-            self.socket?.on("winning", callback: { (message) -> Void in
-                if let root = message.first as? [String: AnyObject]{
-                    if let winner = root["winner"] as? String {
-                        dispatch_async(dispatch_get_main_queue()){
-                            self.gameDelegate?.gameEnded(self, winner: winner)
-                            return
-                        }
-                    }
-                }
-            })
-            
-            self.socket?.onError = { (errorInfo) in
-                println("Something bad happend: \(errorInfo)")
             }
-            self.socket?.onDisconnect = {
+        }
+        
+        self.socket?.on("players") { [weak self] data, ack in
+            if let root = data?.firstObject as? [String : AnyObject] {
+                println("players updated")
+            }
+        }
+        
+        self.socket?.on("step") {[weak self] data, ack in
+            if let root = data?.firstObject as? [String: AnyObject]{
+                var step = Step(json: root)
                 dispatch_async(dispatch_get_main_queue()){
-                    self.delegate?.disconnected(self)
+                    self?.gameDelegate?.didStep(self!, step: step)
                     return
                 }
             }
         }
+        
+        self.socket?.on("winning") {[weak self] data, ack in
+            if let root = data?.firstObject as? [String: AnyObject]{
+                if let winner = root["winner"] as? String {
+                    dispatch_async(dispatch_get_main_queue()){
+                        self?.gameDelegate?.gameEnded(self!, winner: winner)
+                        return
+                    }
+                }
+            }
+        }
     }
-    
+
     func sendChatMessage(message : String) {
-        self.socket?.emit("message", args: [["message" : message]])
+        self.socket?.emit("message", ["message" : message])
     }
     
     func disconnect() {
-        self.socket?.onDisconnect
+        self.socket?.close()
+        self.socket = nil;
+        dispatch_async(dispatch_get_main_queue()){
+            self.delegate?.disconnected(self)
+            return
+        }
+        
     }
     
     func beginPlaying() {
         self.socket?.emit("ready")
     }
     
-    // Implement!
+    func sendStep(step : [String : AnyObject]){
+        socket?.emit("move", step)
+    }
     
 }
