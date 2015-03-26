@@ -25,6 +25,8 @@ class SocketController {
     weak var gameDelegate: SocketControllerGamingDelegate?
     var socket : SocketIOClient?
     
+    var currentPlayerName : String?
+    
     init(delegate: SocketControllerDelegate) {
         self.delegate = delegate
     }
@@ -33,17 +35,17 @@ class SocketController {
     func connectTo(url: NSURL, player: String) {
         let urlString = url.absoluteString!
         println("Connecting to: \(urlString)")
+        self.currentPlayerName = player
+        
+        self.socket?.close()
+        self.socket = nil;
         
         self.socket = SocketIOClient(socketURL: urlString)
         self.addHandlers()
         self.socket?.connect()
         
-        delay(0.5) {
+        delay(0.7) {
             self.socket?.emit("add player", ["playername" : player])
-            dispatch_async(dispatch_get_main_queue()){
-                self.delegate?.connected(self)
-                return
-            }
         }
         
     }
@@ -75,7 +77,20 @@ class SocketController {
         
         self.socket?.on("players") { [weak self] data, ack in
             if let root = data?.firstObject as? [String : AnyObject] {
-                println("players updated")
+                println("players updated \(root)")
+                
+                if let players = root["players"] as? [[String : AnyObject]] {
+                    for player in players {
+                        if let playerName = player["name"] as? String {
+                            if playerName == self?.currentPlayerName {
+                                dispatch_async(dispatch_get_main_queue()){
+                                    self?.delegate?.connected(self!)
+                                    return
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         

@@ -14,6 +14,13 @@ class ConnectionViewController: UIViewController, SocketControllerDelegate, UITe
     @IBOutlet weak var disconnectButton: UIButton!
     @IBOutlet weak var playButton: UIBarButtonItem!
     @IBOutlet weak var playerNameField: UITextField!
+    @IBOutlet weak var serverTf: UITextField! {
+        didSet {
+            if let storedServer = NSUserDefaults.standardUserDefaults().stringForKey(Constants.serverString) {
+                self.serverTf.text = storedServer
+            }
+        }
+    }
     @IBOutlet weak var logTextView: UITextView!
     @IBOutlet weak var messageTextField: UITextField!{
         didSet{
@@ -24,7 +31,7 @@ class ConnectionViewController: UIViewController, SocketControllerDelegate, UITe
  
 //    let url = NSURL(string: "ws://jaywaypongserver.herokuapp.com:80")!
 //    let url = NSURL(string: "ws://10.0.112.186:3000")!
-    let url = NSURL(string: "localhost:3000")!
+    let defaultServer = "jaywaypongserver.herokuapp.com:80"
     var socketController: SocketController!
     
     // MARK: - view life cycle
@@ -46,16 +53,27 @@ class ConnectionViewController: UIViewController, SocketControllerDelegate, UITe
     }
     
     @IBAction func connect(sender: UIButton) {
-        if let playerName = self.playerNameField.text {
-            if  playerName != "" {
-                self.socketController.connectTo(url, player: playerName)
+        let playerName = self.playerNameField.text
+        var url = NSURL(string: defaultServer)!
+        NSUserDefaults.standardUserDefaults().setObject(serverTf.text, forKey: Constants.serverString)
+        NSUserDefaults.standardUserDefaults().synchronize()
+        if self.serverTf.text != nil && self.serverTf.text != "" {
+            if let customUrl = NSURL(string: self.serverTf.text) {
+                url = customUrl
             }
+        }
+        if  playerName != "" {
+            self.socketController.connectTo(url, player: playerName)
         }
         self.view.endEditing(true)
     }
     
     @IBAction func disconnect(sender: UIButton) {
         self.socketController.disconnect()
+    }
+    
+    struct Constants {
+        static let serverString = "stored custom server"
     }
     
     

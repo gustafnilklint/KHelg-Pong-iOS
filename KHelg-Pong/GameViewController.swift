@@ -23,6 +23,8 @@ class GameViewController: UIViewController, SocketControllerGamingDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         self.title = "Pong"
+        self.winnerLabel.text = "Waiting for opponent"
+        self.spinner.startAnimating()
     }
     
     
@@ -35,15 +37,26 @@ class GameViewController: UIViewController, SocketControllerGamingDelegate {
     @IBOutlet weak var touchPad: UIView!
     @IBOutlet weak var pongView: PongView!
 
+    deinit {
+        println("will be removed")
+    }
     
     override func viewDidDisappear(animated: Bool) {
         super.viewDidDisappear(animated)
         self.steeringTimer?.invalidate()
+        self.steeringTimer = nil;
+        self.socket?.gameDelegate = nil;
+        self.socket = nil;
+    }
+    
+    override func viewWillAppear(animated: Bool) {
+        super.viewWillAppear(animated)
         self.first = true
     }
     
     func didStep(socketController: SocketController, step: Step){
-        if  first{
+        self.winnerLabel.text = ""
+        if  first == true{
             first = false
             self.spinner.stopAnimating()
             self.steeringTimer = NSTimer.scheduledTimerWithTimeInterval(1/30, target: self, selector: Selector("runTimer"), userInfo: nil, repeats: true)
